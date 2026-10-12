@@ -7,7 +7,10 @@ namespace {
 
 void startUart(HardwareSerial& serial, int rxPin, int txPin) {
   serial.begin(kPairBaud, SERIAL_8N1, rxPin, txPin);
-  gpio_pullup_en(static_cast<gpio_num_t>(rxPin));
+  // GPIO34–39 are input-only and have no internal pull-up.
+  if (rxPin >= 0 && rxPin <= 33) {
+    gpio_pullup_en(static_cast<gpio_num_t>(rxPin));
+  }
 }
 
 void writeFrame(HardwareSerial& serial, const Frame& frame) {
@@ -25,8 +28,12 @@ void Pairing::begin(const uint8_t localMac[kMacSize], ModuleRole role) {
   port_[1].init(localMac, Side::B, role);
   parser_[0].reset();
   parser_[1].reset();
-  startUart(Serial1, kPairARxPin, kPairATxPin);
-  startUart(Serial2, kPairBRxPin, kPairBTxPin);
+  if (kPairARxPin >= 0) {
+    startUart(Serial1, kPairARxPin, kPairATxPin);
+  }
+  if (kPairBRxPin >= 0) {
+    startUart(Serial2, kPairBRxPin, kPairBTxPin);
+  }
   begun_ = true;
 }
 
@@ -52,8 +59,12 @@ void Pairing::loop() {
   if (!begun_) {
     return;
   }
-  service(Serial1, parser_[0], port_[0]);
-  service(Serial2, parser_[1], port_[1]);
+  if (kPairARxPin >= 0) {
+    service(Serial1, parser_[0], port_[0]);
+  }
+  if (kPairBRxPin >= 0) {
+    service(Serial2, parser_[1], port_[1]);
+  }
 }
 
 void Pairing::service(HardwareSerial& serial, FrameParser& parser, PairPort& port) {

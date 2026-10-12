@@ -55,6 +55,8 @@ class Link {
 
   const uint8_t* localMac() const { return localMac_; }
   void logStatus() const;
+  // Call after the station access point is up so ESP-NOW stays on kWifiChannel.
+  void noteAccessPoint();
 
   Link(const Link&) = delete;
   Link& operator=(const Link&) = delete;

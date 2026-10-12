@@ -253,6 +253,24 @@ void Link::onPaired(PairHandler handler) { onPaired_ = handler; }
 
 void Link::onDelivery(DeliveryHandler handler) { onDelivery_ = handler; }
 
+void Link::noteAccessPoint() {
+  WiFi.setSleep(false);
+  esp_wifi_set_ps(WIFI_PS_NONE);
+  const esp_err_t init = esp_now_init();
+  if (init != ESP_OK && init != ESP_ERR_ESPNOW_EXIST) {
+    radioOk_ = false;
+    Serial.println("ESP-NOW restart failed");
+    return;
+  }
+  radioOk_ = true;
+  esp_wifi_set_channel(kWifiChannel, WIFI_SECOND_CHAN_NONE);
+  for (size_t i = 0; i < 2; ++i) {
+    if (sides_[i].paired) {
+      addRadioPeer(sides_[i].mac);
+    }
+  }
+}
+
 void Link::logStatus() const {
   for (size_t i = 0; i < 2; ++i) {
     const Side side = static_cast<Side>(i);
@@ -269,7 +287,13 @@ void Link::logStatus() const {
 }
 
 void Link::startWifi() {
+  // The station keeps the access point beside ESP-NOW. A later switch back to
+  // station-only mode removes the access point.
+#if MODULE_BAHNHOF
+  WiFi.mode(WIFI_AP_STA);
+#else
   WiFi.mode(WIFI_STA);
+#endif
   WiFi.onEvent(onWifiEvent);
   WiFi.disconnect(false, false);
   WiFi.setSleep(false);
